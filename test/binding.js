@@ -113,6 +113,49 @@ describe('binding', function() {
       });
     });
 
+    describe('Snapshot.requestNodesByName', function () {
+      after(deleteAllSnapshots);
+      it('given two buffers, it calls back with these buffers', function () {
+
+        var buf1 = new Buffer([ 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0xff ]);
+        var buf2 = new Buffer('Hello World');
+
+        var snapshot = binding.heap.takeSnapshot('', function() {});
+        var buffers = [];
+        var nodes = [];
+
+        function onnode(node) {
+          nodes.push(node);
+          if (node.type !== 'Object') return;
+          var buf = binding.heap.getObjectByHeapObjectId(node.id);
+
+          // in case we are dealing with a Uint8Array convert it to a node Buffer
+          if (!Buffer.isBuffer(buf)) buf = Buffer(buf)
+
+          buffers.push({
+            buf: buf,
+            utf8: buf.toString('utf8'),
+            hasParent: !!buf.parent,
+            length: buf.length,
+            type: node.type,
+            id: node.id,
+            shallowSize: node.shallowSize
+          });
+        }
+
+        // starting with node v3 node Buffers are stored as Uint8Arrays
+        var bufferName = NODE_V_010 ? 'Buffer' : 'Uint8Array'
+        snapshot.requestNodesByName(bufferName, onnode);
+
+        // in the case of Uint8Arrays we may see the first Buffer containing content of a require() statement
+        if (buffers[0] && buffers[0].length > 20) buffers.shift();
+
+        expect(nodes.length > 2);
+        expect(buffers.length).to.equal(2);
+        expect(buffers[0].utf8).to.equal('Hello World')
+      });
+    });
+
     function deleteAllSnapshots() {
       Object.keys(binding.heap.snapshots).forEach(function(key) {
         binding.heap.snapshots[key].delete();
