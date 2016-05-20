@@ -15,6 +15,7 @@ namespace nodex {
       static NAN_GETTER(GetRoot);
       static NAN_METHOD(GetNode);
       static NAN_METHOD(GetNodeById);
+      static NAN_METHOD(RequestNodesByName);
       static NAN_METHOD(Delete);
       static NAN_METHOD(Serialize);
       static Nan::Persistent<v8::ObjectTemplate> snapshot_template_;

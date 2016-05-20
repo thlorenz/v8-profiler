@@ -34,6 +34,7 @@ namespace nodex {
     Nan::SetAccessor(o, Nan::New<String>("root").ToLocalChecked(), Snapshot::GetRoot);
     Nan::SetMethod(o, "getNode", Snapshot::GetNode);
     Nan::SetMethod(o, "getNodeById", Snapshot::GetNodeById);
+    Nan::SetMethod(o, "requestNodesByName", Snapshot::RequestNodesByName);
     Nan::SetMethod(o, "delete", Snapshot::Delete);
     Nan::SetMethod(o, "serialize", Snapshot::Serialize);
     snapshot_template_.Reset(o);
@@ -74,6 +75,38 @@ namespace nodex {
     SnapshotObjectId id = info[0]->Int32Value();
     void* ptr = Nan::GetInternalFieldPointer(info.This(), 0);
     info.GetReturnValue().Set(GraphNode::New(static_cast<HeapSnapshot*>(ptr)->GetNodeById(id)));
+  }
+
+  NAN_METHOD(Snapshot::RequestNodesByName) {
+    Nan::HandleScope scope;
+
+    if (!info.Length()) {
+      return Nan::ThrowError("No name specified");
+    }
+    if (info.Length() < 2) {
+      return Nan::ThrowError("No callback specified");
+    }
+    if (!info[0]->IsString()) {
+      return Nan::ThrowTypeError("First argument must be a string");
+    }
+    if (!info[1]->IsFunction()) {
+      return Nan::ThrowTypeError("Second argument must be a function");
+    }
+
+    Local<String> name = info[0].As<String>();
+    Local<Function> fn = info[1].As<Function>();
+    void* ptr = Nan::GetInternalFieldPointer(info.This(), 0);
+    HeapSnapshot* self = static_cast<HeapSnapshot*>(ptr);
+
+    for (SnapshotObjectId id = 0; id < self->GetMaxSnapshotJSObjectId(); id++) {
+      const v8::HeapGraphNode* node = self->GetNodeById(id);
+      if (node == nullptr) continue;
+      if (name->StrictEquals(node->GetName())) {
+        Local<Value> arg = GraphNode::New(node);
+        fn->Call(Null(info.GetIsolate()), 1, &arg);
+      }
+    }
+    return;
   }
 
   NAN_METHOD(Snapshot::Serialize) {
