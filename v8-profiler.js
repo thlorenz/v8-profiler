@@ -1,9 +1,7 @@
 var pack = require('./package.json');
 var binding = require('./' + [
   'build',
-  'profiler',
-  'v' + pack.version,
-  ['node', 'v' + process.versions.modules, process.platform, process.arch].join('-'),
+  'Release',
   'profiler.node'
 ].join('/'));
 
